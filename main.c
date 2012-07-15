@@ -19,6 +19,7 @@ struct matrix_item
   double value;
 };
 
+
 struct matrix_item * matrix_items=0;
 unsigned int current_matrix_item=0;
 unsigned int max_matrix_item=0;
@@ -52,6 +53,19 @@ void clear_line()
             ftruncate(1,0);
 }
 
+
+void RunFastRunTrue()
+{
+ //elevate io ops
+ pid_t pid;
+ if ((pid = getpid()) < 0) { /*Could not get PID */ } else
+                           { char command[129]={0};
+                                sprintf(command,"sudo ionice -c 1 -n 0 -p %u ",pid);
+                                int i=system((char* )command);
+                                 if (i==0) { fprintf(stderr,"IO elevation ok \n"); }
+                           }
+
+}
 
 void print_matrix(FILE * output_file,double * matrix_items,unsigned int rows_dimension,unsigned int columns_dimension)
 {
@@ -100,6 +114,7 @@ inline void swap(struct matrix_item *a, struct matrix_item *b)
 
 void sort(struct matrix_item *arr,unsigned int beg,unsigned int end)
 {
+  struct matrix_item t;
   if (end > beg + 1)
   {
     int piv = arr[beg].row , piv2 = arr[beg].column, l = beg + 1, r = end;
@@ -108,22 +123,31 @@ void sort(struct matrix_item *arr,unsigned int beg,unsigned int end)
       if (arr[l].row <= piv)
        {
          if ((arr[l].row == piv)&&(arr[l].column>piv2))
-          {
-             swap(&arr[l], &arr[--r]);
+          {//SWAP
+             --r;
+             t=arr[l]; arr[l]=arr[r]; arr[r]=t;
+             //swap(&arr[l], &arr[--r]);
           } else
           {
               l++;
           }
        }
       else
-        swap(&arr[l], &arr[--r]);
+      {//SWAP
+        --r;
+        t=arr[l]; arr[l]=arr[r]; arr[r]=t;
+        //swap(&arr[l], &arr[--r]);
+      }
     }
-    swap(&arr[--l], &arr[beg]);
+
+    --l;
+    t=arr[l]; arr[l]=arr[beg]; arr[beg]=t;
+    //swap(&arr[--l], &arr[beg]);
+
     sort(arr, beg, l);
     sort(arr, r, end);
   }
 }
-
 
 
 void sort_sparse_coordinates()
@@ -158,16 +182,7 @@ void write_sparse_coordinates(FILE * output_file_rows,FILE * output_file_columns
 int main(int argc, char** argv)
 {
     printf("Matrix Type Conversion !\n");
-
-    //elevate io ops
-    pid_t pid;
-    if ((pid = getpid()) < 0) { /*Could not get PID */ } else
-                              { char command[129]={0};
-                                sprintf(command,"sudo ionice -c 1 -n 0 -p %u ",pid);
-                                int i=system((char* )command);
-                                 if (i==0) { fprintf(stderr,"IO elevation ok \n"); }
-                                //printf("%s\n",command);
-                              }
+    RunFastRunTrue();
 
 
 
@@ -175,11 +190,9 @@ int main(int argc, char** argv)
     gettimeofday(&starttime,0x0);
 
 
-    if (argc!=4) {
-                    fprintf(stderr,"Wrong Number of arguments provided ( %u ) : \n",argc);
+    if (argc!=4) {  fprintf(stderr,"Wrong Number of arguments provided ( %u ) : \n",argc);
                     fprintf(stderr,"Syntax : MatrixTypeConversion InputIndexes InputData Output");
-                    return 1;
-                 }
+                    return 1; }
 
     FILE *indexes_file=0; //KIx30.txt SkylineIndexes.txt
     indexes_file = fopen(argv[1],"r");
@@ -207,12 +220,9 @@ int main(int argc, char** argv)
     output_file_values = fopen(output_file_string,"w");
 
 
-    if (indexes_file==0)
-    { fprintf(stderr,"Error Opening Index file \n"); return 1; }
-    if (data_file==0)
-    { fprintf(stderr,"Error Opening Data file \n"); return 1; }
-    if ( (output_file_rows==0)||(output_file_columns==0)||(output_file_values==0) )
-    { fprintf(stderr,"Error Opening Output file \n"); return 1; }
+    if (indexes_file==0) { fprintf(stderr,"Error Opening Index file \n"); return 1; }
+    if (data_file==0)    { fprintf(stderr,"Error Opening Data file \n"); return 1; }
+    if ( (output_file_rows==0)||(output_file_columns==0)||(output_file_values==0) ) { fprintf(stderr,"Error Opening Output file \n"); return 1; }
 
 
      unsigned int matrix_dimension=0;
@@ -221,12 +231,9 @@ int main(int argc, char** argv)
      double matrix_val;
 
      //GET MATRIX DIMENSIONS
-     while (fgets(number_str, 100 , indexes_file) != 0)
-       {
-           number_val=atoi(number_str);
-           ++matrix_dimension;
-       }
+     while (fgets(number_str, 100 , indexes_file) != 0) { number_val=atoi(number_str); ++matrix_dimension; }
      --matrix_dimension;
+
      fprintf(stderr,"Matrix has a size of %ux%u \n",matrix_dimension,matrix_dimension);
      fprintf(stderr,"We will need a maximum of %u elements \n",2*(number_val-matrix_dimension)+matrix_dimension);
      rewind (indexes_file);
@@ -239,10 +246,7 @@ int main(int argc, char** argv)
      memory_limit =(unsigned int) ( memory_limit *((float) MEMORY_PERCENTAGE_USED/100) );
      max_matrix_item = matrix_dimension * matrix_dimension*((float)MEMORY_PERCENTAGE_USED/100);
 
-     if ( matrix_dimension < 1000 )
-      {
-            max_matrix_item = matrix_dimension*matrix_dimension;
-      }
+     if ( matrix_dimension < 1000 ) { max_matrix_item = matrix_dimension*matrix_dimension; }
 
      fprintf(stderr,"Using a %u %% estimation for %u filled elements we need %u MB of memory \n",MEMORY_PERCENTAGE_USED,max_matrix_item,memory_limit/1048576);
 
@@ -294,7 +298,13 @@ int main(int argc, char** argv)
                 // matrix_items[column_number*matrix_dimension + row_number] = matrix_val;
                 if ( matrix_val!=0 )
                  {
-                   add_sparse_coordinate(row_number,column_number,matrix_val);
+                   if (current_matrix_item<max_matrix_item)
+                         {
+                           matrix_items[current_matrix_item].row=row_number;
+                           matrix_items[current_matrix_item].column=column_number;
+                           matrix_items[current_matrix_item].value=matrix_val;
+                           ++current_matrix_item;
+                         } else { fprintf(stderr,"Out Of Memory!\n"); }
                  }
 
               if ( row_number!=column_number )
@@ -303,7 +313,13 @@ int main(int argc, char** argv)
                  // matrix_items[row_number*matrix_dimension + column_number] = matrix_val;
                   if ( matrix_val!=0  )
                   {
-                    add_sparse_coordinate(column_number,row_number,matrix_val);
+                    if (current_matrix_item<max_matrix_item)
+                         {
+                           matrix_items[current_matrix_item].row=row_number;
+                           matrix_items[current_matrix_item].column=column_number;
+                           matrix_items[current_matrix_item].value=matrix_val;
+                           ++current_matrix_item;
+                         } else { fprintf(stderr,"Out Of Memory!\n"); }
                   }
                }
 
@@ -314,7 +330,7 @@ int main(int argc, char** argv)
               ++i;
             }
 
-         if ((column_number>3000) && (column_number%10000==0))
+         if ((column_number>3000) && (column_number%9000==0))
           {
             clear_line();
             fprintf(stdout,"Matrix Type Conversion running...!\n");
@@ -325,31 +341,28 @@ int main(int argc, char** argv)
        }
 
 
+       clear_line();
+       fprintf(stdout,"Matrix Type Conversion done...!\n");
+       fprintf(stdout,"100 %% \n");
+
+
       fprintf(stderr,"Sorting Output.. \n");
       sort_sparse_coordinates();
       write_sparse_coordinates(output_file_rows,output_file_columns,output_file_values);
 
-      fprintf(stderr,"100% Done.. \n");
+      fprintf(stderr,"100%% Done.. \n");
       gettimeofday(&endtime,0x0);
-      fprintf(stderr,"Matrix Type Conversion  time : %u microseconds \n",timeval_diff(&difference,&endtime,&starttime));
+      fprintf(stderr,"Matrix Type Conversion  time : %u microseconds \n",(unsigned int) timeval_diff(&difference,&endtime,&starttime));
 
 
 
       // CHILLOUT
       free(matrix_items);
 
-      fclose(indexes_file);
-      fclose(data_file);
+      fclose(indexes_file); fclose(data_file);
 
-      fflush(output_file_rows);
-      fflush(output_file_columns);
-      fflush(output_file_values);
+      fflush(output_file_rows); fflush(output_file_columns); fflush(output_file_values);
 
-      fclose(output_file_rows);
-      fclose(output_file_columns);
-      fclose(output_file_values);
-
-
-
+      fclose(output_file_rows); fclose(output_file_columns); fclose(output_file_values);
     return 0;
 }
