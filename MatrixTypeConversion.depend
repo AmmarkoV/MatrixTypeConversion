@@ -1,0 +1,9 @@
+# depslib dependency file v1.0
+1326744482 source:/home/ammar/MatrixTypeConversion/C/MatrixTypeConversion/main.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	<time.h>
+	<sys/time.h>
+	<unistd.h>
+
