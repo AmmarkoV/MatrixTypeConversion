@@ -107,11 +107,11 @@ inline void add_sparse_coordinate(unsigned int row,unsigned int column,double va
     }
 }
 
-
+/*
 inline void swap(struct matrix_item *a, struct matrix_item *b)
 {
   struct matrix_item t=*a; *a=*b; *b=t;
-}
+}*/
 
 void sort(struct matrix_item *arr,unsigned int beg,unsigned int end)
 {
@@ -152,10 +152,26 @@ void sort(struct matrix_item *arr,unsigned int beg,unsigned int end)
 }
 
 
+/* qsort struct comparision function (price float field) */
+int struct_cmp_matrix_items(const void *a, const void *b)
+{
+    struct matrix_item *ia = (struct matrix_item *)a;
+    struct matrix_item *ib = (struct matrix_item *)b;
+
+    //return (int) (ia->value > ib->value);
+    return (int)(100.f * ia->value - 100.f * ib->value);
+	/* float comparison: returns negative if b > a
+	and positive if a > b. We multiplied result by 100.0
+	to preserve decimal fraction */
+
+}
+
 void sort_sparse_coordinates()
 {
-   sort(matrix_items,0,current_matrix_item);
+//   sort(matrix_items,0,current_matrix_item);
+    qsort(matrix_items, current_matrix_item, sizeof(struct matrix_item), struct_cmp_matrix_items);
 }
+
 
 
 
