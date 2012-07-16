@@ -48,9 +48,10 @@ long timeval_diff ( struct timeval *difference, struct timeval *end_time, struct
 
 void clear_line()
 {
-            fputs("\033[A\033[2K\033[A\033[2K",stdout);
-            rewind(stdout);
-            ftruncate(1,0);
+  fputs("\033[A\033[2K\033[A\033[2K",stdout);
+  rewind(stdout);
+  int i=ftruncate(1,0);
+  if (i!=0) { /*fprintf(stderr,"Error with ftruncate\n");*/ }
 }
 
 
@@ -140,6 +141,7 @@ void sort(struct matrix_item *arr,unsigned int beg,unsigned int end)
       }
     }
 
+    //SWAP
     --l;
     t=arr[l]; arr[l]=arr[beg]; arr[beg]=t;
     //swap(&arr[--l], &arr[beg]);
@@ -160,23 +162,9 @@ void sort_sparse_coordinates()
 void write_sparse_coordinates(FILE * output_file_rows,FILE * output_file_columns,FILE * output_file_values)
 {
    unsigned int i=0;
-   fprintf(stderr,"Writing Rows \n");
-   for ( i=0; i<current_matrix_item; i++ )
-    {
-      fprintf(output_file_rows,"%u\n",matrix_items[i].row);
-    }
-
-   fprintf(stderr,"Writing Columns \n");
-   for ( i=0; i<current_matrix_item; i++ )
-    {
-      fprintf(output_file_columns,"%u\n",matrix_items[i].column);
-    }
-
-   fprintf(stderr,"Writing Values \n");
-   for ( i=0; i<current_matrix_item; i++ )
-    {
-      fprintf(output_file_values,"%f\n",matrix_items[i].value);
-    }
+   fprintf(stderr,"Writing Rows \n");    for ( i=0; i<current_matrix_item; i++ ) { fprintf(output_file_rows,"%u\n",matrix_items[i].row); }
+   fprintf(stderr,"Writing Columns \n"); for ( i=0; i<current_matrix_item; i++ ) { fprintf(output_file_columns,"%u\n",matrix_items[i].column); }
+   fprintf(stderr,"Writing Values \n");  for ( i=0; i<current_matrix_item; i++ ) { fprintf(output_file_values,"%f\n",matrix_items[i].value); }
 }
 
 int main(int argc, char** argv)
@@ -228,7 +216,8 @@ int main(int argc, char** argv)
      unsigned int matrix_dimension=0;
      char number_str[100]={0};
      unsigned int number_val,last_number_val,rows_to_fill,column_number,row_number;
-     double matrix_val;
+     double matrix_val=0.0;
+     int incoming_matrix_val_is_not_null=1;
 
      //GET MATRIX DIMENSIONS
      while (fgets(number_str, 100 , indexes_file) != 0) { number_val=atoi(number_str); ++matrix_dimension; }
@@ -281,23 +270,34 @@ int main(int argc, char** argv)
             i=0;
             while (i<rows_to_fill)
             {
+
               if ( fgets(number_str, 100 , data_file) == 0 )
                 {
                     fprintf(stderr,"Error out of data input..! \n");
                     break;
                 }
 
+
               matrix_val=atof(number_str);
+              incoming_matrix_val_is_not_null=0;
+              if ( matrix_val!= 0) incoming_matrix_val_is_not_null=1;
+
+             /*
+              incoming_matrix_val_is_not_null=1;
+              if ( (number_str[0]=='0') && (number_str[1]=='.') && (number_str[2]=='0') && (number_str[3]==0) ) { incoming_matrix_val_is_not_null=0; } else
+              if ( (number_str[0]=='0') && (number_str[1]==',') && (number_str[2]=='0') && (number_str[3]==0) ) { incoming_matrix_val_is_not_null=0; } else
+              if ( (number_str[0]=='0') && (number_str[1]==0) )                                                 { incoming_matrix_val_is_not_null=0; } else
+                                                                                                                {  matrix_val=atof(number_str); }
+              */
+
+
 
               if ( (matrix_dimension<=column_number) || (matrix_dimension<=row_number) )
                {
                    fprintf(stderr,"Error @ file pair , accessing[%u,%u] \n",column_number,row_number);
                } else
+              if ( incoming_matrix_val_is_not_null )
                {
-                // fprintf(stderr,"Element %u,%u = %f \n",row_number,column_number,matrix_val);
-                // matrix_items[column_number*matrix_dimension + row_number] = matrix_val;
-                if ( matrix_val!=0 )
-                 {
                    if (current_matrix_item<max_matrix_item)
                          {
                            matrix_items[current_matrix_item].row=row_number;
@@ -305,24 +305,17 @@ int main(int argc, char** argv)
                            matrix_items[current_matrix_item].value=matrix_val;
                            ++current_matrix_item;
                          } else { fprintf(stderr,"Out Of Memory!\n"); }
-                 }
+               }
 
-              if ( row_number!=column_number )
+              if ( ( row_number!=column_number ) && ( incoming_matrix_val_is_not_null  ) )
                {
-                 // fprintf(stderr,"Element %u,%u = %f \n",column_number,row_number,matrix_val);
-                 // matrix_items[row_number*matrix_dimension + column_number] = matrix_val;
-                  if ( matrix_val!=0  )
-                  {
-                    if (current_matrix_item<max_matrix_item)
+                 if (current_matrix_item<max_matrix_item)
                          {
                            matrix_items[current_matrix_item].row=row_number;
                            matrix_items[current_matrix_item].column=column_number;
                            matrix_items[current_matrix_item].value=matrix_val;
                            ++current_matrix_item;
                          } else { fprintf(stderr,"Out Of Memory!\n"); }
-                  }
-               }
-
                }
 
 
