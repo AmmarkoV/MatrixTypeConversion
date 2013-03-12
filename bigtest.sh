@@ -12,7 +12,7 @@ do
 echo -n $governor > $CPUFREQ
 done
 
-  sudo nice -n -20 ionice -c 1 -n 0  time ./MatrixTypeConversion KIx30.txt KData30b.txt Out.txt&
+  sudo nice -n -20 ionice -c 1 -n 0  time -v ./MatrixTypeConversion KIx30.txt KData30b.txt Out.txt&
   exit 0
 
 fi
