@@ -9,7 +9,7 @@ OPTIMIZATIONST="-fprofile-use -march=corei7-avx -mtune=corei7-avx -funroll-loops
 
 OPTIMIZATIONS="-s -O3 -fexpensive-optimizations -march=native -mtune=native "
 
-gcc main.c $OPTIMIZATIONST -o MatrixTypeConversion
+gcc main.c $OPTIMIZATION -o MatrixTypeConversion
 strip MatrixTypeConversion
 
 clang -O3 main.c -o MatrixTypeConversionClang
